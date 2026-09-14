@@ -49,15 +49,38 @@ PluginHost::~PluginHost()
 
 juce::Array<juce::PluginDescription> PluginHost::scanDefaultVst3Directory()
 {
+    juce::Array<juce::PluginDescription> allResults;
+    juce::StringArray scannedPaths;
+
+    auto addFromDir = [&] (const juce::File& dir)
+    {
+        if (dir.isDirectory())
+        {
+            auto found = scanDirectory (dir, true);
+            for (const auto& desc : found)
+            {
+                if (! scannedPaths.contains (desc.fileOrIdentifier))
+                {
+                    scannedPaths.add (desc.fileOrIdentifier);
+                    allResults.add (desc);
+                }
+            }
+        }
+    };
+
    #if JUCE_WINDOWS
-    const juce::File defaultDir ("C:\\Program Files\\Common Files\\VST3");
+    addFromDir (juce::File ("C:\\Program Files\\Common Files\\VST3"));
    #elif JUCE_MAC
-    const juce::File defaultDir ("/Library/Audio/Plug-Ins/VST3");
+    addFromDir (juce::File ("/Library/Audio/Plug-Ins/VST3"));
    #else
-    const juce::File defaultDir ("/usr/lib/vst3");
+    addFromDir (juce::File ("/usr/lib/vst3"));
    #endif
 
-    return scanDirectory (defaultDir, true);
+    // Também verificar a pasta do executável e a pasta atual de trabalho (para testes e plugins locais)
+    addFromDir (juce::File::getSpecialLocation (juce::File::currentExecutableFile).getParentDirectory());
+    addFromDir (juce::File::getCurrentWorkingDirectory().getChildFile ("build"));
+
+    return allResults;
 }
 
 juce::Array<juce::PluginDescription> PluginHost::scanDirectory (const juce::File& dir, bool recursive)

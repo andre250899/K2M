@@ -81,3 +81,91 @@ option(K2M_BUILD_AUDIO_PLUGIN_HOST "Build JUCE AudioPluginHost for diagnostic re
 if(K2M_BUILD_AUDIO_PLUGIN_HOST)
     add_subdirectory(external/JUCE/extras/AudioPluginHost AudioPluginHost)
 endif()
+
+# Controlled Test Synthesizer VST3 (para aprovação e validação autônoma do Gate A)
+juce_add_plugin(K2M_TestSynth
+    PLUGIN_MANUFACTURER_CODE K2MP
+    PLUGIN_CODE K2MS
+    FORMATS VST3
+    PRODUCT_NAME "K2M Test Synth"
+    IS_SYNTH TRUE
+    NEEDS_MIDI_INPUT TRUE
+    NEEDS_MIDI_OUTPUT FALSE
+    IS_MIDI_EFFECT FALSE
+)
+
+target_sources(K2M_TestSynth
+    PRIVATE
+        Source/TestPlugin/TestSynthProcessor.cpp
+)
+
+target_include_directories(K2M_TestSynth
+    PRIVATE
+        Source/TestPlugin
+)
+
+target_compile_features(K2M_TestSynth PRIVATE cxx_std_20)
+
+target_compile_definitions(K2M_TestSynth
+    PRIVATE
+        JUCE_VST3_CAN_REPLACE_VST2=0
+        JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING=1
+)
+
+target_link_libraries(K2M_TestSynth
+    PRIVATE
+        juce::juce_audio_basics
+        juce::juce_audio_processors
+        juce::juce_core
+        juce::juce_graphics
+        juce::juce_gui_basics
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
+
+# Gate A automated test runner
+add_executable(GateATest
+    Tests/GateATest.cpp
+    Source/Plugin/PluginHost.cpp
+    Source/Audio/CaptureSink.cpp
+)
+
+target_include_directories(GateATest
+    PRIVATE
+        Source
+        Source/Plugin
+        Source/Audio
+        Source/Sampling
+)
+
+target_compile_features(GateATest PRIVATE cxx_std_20)
+
+target_compile_definitions(GateATest
+    PRIVATE
+        JUCE_PLUGINHOST_VST3=1
+        JUCE_PLUGINHOST_VST=0
+        JUCE_PLUGINHOST_AU=0
+        JUCE_PLUGINHOST_LADSPA=0
+        JUCE_PLUGINHOST_LV2=0
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+)
+
+target_link_libraries(GateATest
+    PRIVATE
+        juce::juce_audio_basics
+        juce::juce_audio_formats
+        juce::juce_audio_processors
+        juce::juce_core
+        juce::juce_data_structures
+        juce::juce_events
+        juce::juce_graphics
+        juce::juce_gui_basics
+        juce::juce_gui_extra
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
