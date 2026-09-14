@@ -178,6 +178,57 @@ target_link_libraries(GateATest
         juce::juce_recommended_warning_flags
 )
 
+# Fase 3 - Gate B fixture: captura real de 2 notas x 2 velocities + exportação SFZ portável
+add_executable(GateBFixtureTest
+    Tests/GateBFixtureTest.cpp
+    Source/Plugin/PluginHost.cpp
+    Source/Audio/CaptureSink.cpp
+    Source/Mapping/Mapper.cpp
+    Source/Export/SfzExporter.cpp
+    Source/Project/ProjectStore.cpp
+)
+
+target_include_directories(GateBFixtureTest
+    PRIVATE
+        Source
+        Source/Plugin
+        Source/Audio
+        Source/Sampling
+        Source/Mapping
+        Source/Export
+        Source/Project
+)
+
+target_compile_features(GateBFixtureTest PRIVATE cxx_std_20)
+
+target_compile_definitions(GateBFixtureTest
+    PRIVATE
+        JUCE_PLUGINHOST_VST3=1
+        JUCE_PLUGINHOST_VST=0
+        JUCE_PLUGINHOST_AU=0
+        JUCE_PLUGINHOST_LADSPA=0
+        JUCE_PLUGINHOST_LV2=0
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+)
+
+target_link_libraries(GateBFixtureTest
+    PRIVATE
+        juce::juce_audio_basics
+        juce::juce_audio_formats
+        juce::juce_audio_processors
+        juce::juce_core
+        juce::juce_data_structures
+        juce::juce_events
+        juce::juce_graphics
+        juce::juce_gui_basics
+        juce::juce_gui_extra
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
+
 # Batch, Mapping, SFZ, DSP and ProjectStore test runner
 add_executable(BatchAndSfzTest
     Tests/BatchAndSfzTest.cpp
