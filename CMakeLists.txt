@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Add local JUCE 8 submodule / checkout
+# Add local JUCE 8 submodule
 add_subdirectory(external/JUCE)
 
 juce_add_gui_app(K2M
@@ -19,6 +19,9 @@ target_sources(K2M
     PRIVATE
         Source/App/Main.cpp
         Source/UI/MainComponent.cpp
+        Source/Plugin/PluginHost.cpp
+        Source/Audio/AudioEngine.cpp
+        Source/Audio/CaptureSink.cpp
 )
 
 target_include_directories(K2M
@@ -26,6 +29,9 @@ target_include_directories(K2M
         Source
         Source/App
         Source/UI
+        Source/Plugin
+        Source/Audio
+        Source/Sampling
 )
 
 target_compile_features(K2M
