@@ -1,8 +1,10 @@
-# Build directories
-build/
-bin/
-out/
-.cache/
+# Build directories (ancorado na raiz: evita colisão case-insensitive com
+# pastas de código como Source/Export/ no Windows - "export/" sem "/" na
+# frente também ignoraria Source/Export/ em qualquer profundidade)
+/build/
+/bin/
+/out/
+/.cache/
 
 # Visual Studio / IDE files
 .vs/
@@ -12,9 +14,12 @@ out/
 .idea/
 .vscode/
 
-# Temporary and export artifacts generated at runtime
-temp/
-logs/
-raw/
-processed/
-export/
+# Temporary and export artifacts generated at runtime (apenas na raiz do projeto)
+/temp/
+/logs/
+/raw/
+/processed/
+/export/
+
+# Ferramentas de terceiros baixadas para validação local (não redistribuir binários no repo)
+external/sfizz_render/

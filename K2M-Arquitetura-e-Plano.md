@@ -582,7 +582,7 @@ Exemplo produzido pelo mapper, sem loop:
 
 ```sfz
 <group>
-ampeg_veltrack=0
+amp_veltrack=0
 ampeg_release=0.05
 
 <region> sample=samples/n060_v032.wav pitch_keycenter=60 lokey=59 hikey=61 lovel=1 hivel=48 loop_mode=no_loop
@@ -591,7 +591,7 @@ ampeg_release=0.05
 <region> sample=samples/n060_v127.wav pitch_keycenter=60 lokey=59 hikey=61 lovel=112 hivel=127 loop_mode=no_loop
 ```
 
-`ampeg_veltrack=0` é uma decisão inicial para não aplicar novamente uma curva de volume às camadas já gravadas com intensidades diferentes. Ela produz degraus entre camadas e deve ser comparada a uma curva calibrada posteriormente. `ampeg_release=0.05` é apenas envelope de soltura do player; não reproduz o release original do Kontakt. Conferir suporte desses opcodes no player/conversor escolhido. A semântica de `ampeg_release` é documentada em [^34].
+`amp_veltrack=0` é uma decisão inicial para não aplicar novamente uma curva de volume às camadas já gravadas com intensidades diferentes (é o opcode que controla amplitude vs. velocity; `ampeg_veltrack` não existe na especificação SFZ). Ela produz degraus entre camadas e deve ser comparada a uma curva calibrada posteriormente. `ampeg_release=0.05` é apenas envelope de soltura do player; não reproduz o release original do Kontakt. Conferir suporte desses opcodes no player/conversor escolhido. A semântica de `ampeg_release` é documentada em [^34].
 
 Exportação futura de loop sustentado usa `loop_sustain`, com pontos testados e envelope compatível. Round robin precisa de condições como sequência; CC e keyswitches precisam de opcodes compatíveis com o player. Exportadores devem emitir um relatório dos recursos descartados ou aproximados.
 

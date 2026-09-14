@@ -229,6 +229,36 @@ target_link_libraries(GateBFixtureTest
         juce::juce_recommended_warning_flags
 )
 
+# Fase 3 - Validação cruzada do SFZ com engine independente (sfizz_render, opcional)
+add_executable(SfzEngineValidationTest
+    Tests/SfzEngineValidationTest.cpp
+)
+
+target_include_directories(SfzEngineValidationTest
+    PRIVATE
+        Source
+)
+
+target_compile_features(SfzEngineValidationTest PRIVATE cxx_std_20)
+
+target_compile_definitions(SfzEngineValidationTest
+    PRIVATE
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+)
+
+target_link_libraries(SfzEngineValidationTest
+    PRIVATE
+        juce::juce_audio_basics
+        juce::juce_audio_formats
+        juce::juce_core
+        juce::juce_events
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
+
 # Batch, Mapping, SFZ, DSP and ProjectStore test runner
 add_executable(BatchAndSfzTest
     Tests/BatchAndSfzTest.cpp
