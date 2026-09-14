@@ -23,6 +23,10 @@ target_sources(K2M
         Source/Plugin/PluginHost.cpp
         Source/Audio/AudioEngine.cpp
         Source/Audio/CaptureSink.cpp
+        Source/Mapping/Mapper.cpp
+        Source/Export/SfzExporter.cpp
+        Source/DSP/SampleProcessor.cpp
+        Source/Project/ProjectStore.cpp
 )
 
 target_include_directories(K2M
@@ -33,6 +37,10 @@ target_include_directories(K2M
         Source/Plugin
         Source/Audio
         Source/Sampling
+        Source/Mapping
+        Source/Export
+        Source/DSP
+        Source/Project
 )
 
 target_compile_features(K2M
@@ -164,6 +172,45 @@ target_link_libraries(GateATest
         juce::juce_graphics
         juce::juce_gui_basics
         juce::juce_gui_extra
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
+
+# Batch, Mapping, SFZ, DSP and ProjectStore test runner
+add_executable(BatchAndSfzTest
+    Tests/BatchAndSfzTest.cpp
+    Source/Mapping/Mapper.cpp
+    Source/Export/SfzExporter.cpp
+    Source/DSP/SampleProcessor.cpp
+    Source/Project/ProjectStore.cpp
+)
+
+target_include_directories(BatchAndSfzTest
+    PRIVATE
+        Source
+        Source/Sampling
+        Source/Mapping
+        Source/Export
+        Source/DSP
+        Source/Project
+)
+
+target_compile_features(BatchAndSfzTest PRIVATE cxx_std_20)
+
+target_compile_definitions(BatchAndSfzTest
+    PRIVATE
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+)
+
+target_link_libraries(BatchAndSfzTest
+    PRIVATE
+        juce::juce_audio_basics
+        juce::juce_core
+        juce::juce_data_structures
+        juce::juce_events
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

@@ -49,36 +49,48 @@ PluginHost::~PluginHost()
 
 juce::Array<juce::PluginDescription> PluginHost::scanDefaultVst3Directory()
 {
-    juce::Array<juce::PluginDescription> allResults;
-    juce::StringArray scannedPaths;
+    juce::FileSearchPath searchPath;
 
-    auto addFromDir = [&] (const juce::File& dir)
+    // 1. Locais padrão do sistema fornecidos pelo JUCE (ex: C:\Program Files\Common Files\VST3)
+    for (int i = 0; i < formatManager.getNumFormats(); ++i)
     {
-        if (dir.isDirectory())
+        if (auto* format = formatManager.getFormat (i))
+            searchPath.addPath (format->getDefaultLocationsToSearch());
+    }
+
+    // 2. Diretório do executável K2M e subpastas (ex: VST3/)
+    const auto exeDir = juce::File::getSpecialLocation (juce::File::currentExecutableFile).getParentDirectory();
+    searchPath.add (exeDir);
+    searchPath.add (exeDir.getChildFile ("VST3"));
+
+    // 3. Pastas de build do projeto
+    searchPath.add (exeDir.getParentDirectory());
+    searchPath.add (juce::File ("C:\\Users\\VOXX-PC\\Documents\\Projetos\\K2M\\build"));
+    searchPath.add (juce::File ("C:\\Program Files\\Common Files\\VST3"));
+
+    juce::Array<juce::PluginDescription> allResults;
+    juce::StringArray scannedIdentifiers;
+
+    for (int i = 0; i < formatManager.getNumFormats(); ++i)
+    {
+        if (auto* format = formatManager.getFormat (i))
         {
-            auto found = scanDirectory (dir, true);
-            for (const auto& desc : found)
+            auto files = format->searchPathsForPlugins (searchPath, true, false);
+            for (const auto& file : files)
             {
-                if (! scannedPaths.contains (desc.fileOrIdentifier))
+                juce::OwnedArray<juce::PluginDescription> descs;
+                format->findAllTypesForFile (descs, file);
+                for (auto* d : descs)
                 {
-                    scannedPaths.add (desc.fileOrIdentifier);
-                    allResults.add (desc);
+                    if (d != nullptr && ! scannedIdentifiers.contains (d->fileOrIdentifier))
+                    {
+                        scannedIdentifiers.add (d->fileOrIdentifier);
+                        allResults.add (*d);
+                    }
                 }
             }
         }
-    };
-
-   #if JUCE_WINDOWS
-    addFromDir (juce::File ("C:\\Program Files\\Common Files\\VST3"));
-   #elif JUCE_MAC
-    addFromDir (juce::File ("/Library/Audio/Plug-Ins/VST3"));
-   #else
-    addFromDir (juce::File ("/usr/lib/vst3"));
-   #endif
-
-    // Também verificar a pasta do executável e a pasta atual de trabalho (para testes e plugins locais)
-    addFromDir (juce::File::getSpecialLocation (juce::File::currentExecutableFile).getParentDirectory());
-    addFromDir (juce::File::getCurrentWorkingDirectory().getChildFile ("build"));
+    }
 
     return allResults;
 }
