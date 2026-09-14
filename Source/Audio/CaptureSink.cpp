@@ -62,14 +62,16 @@ bool CaptureSink::saveWavFile (const juce::File& destinationFile,
         tempFile.deleteFile();
 
     juce::WavAudioFormat wavFormat;
-    std::unique_ptr<juce::AudioFormatWriter> writer (
-        wavFormat.createWriterFor (new juce::FileOutputStream (tempFile),
-                                  sampleRate,
-                                  (unsigned int) buffer.getNumChannels(),
-                                  bitDepth,
-                                  {},
-                                  0)
-    );
+    std::unique_ptr<juce::OutputStream> stream (tempFile.createOutputStream());
+    if (stream == nullptr)
+        return false;
+
+    auto options = juce::AudioFormatWriterOptions{}
+                       .withSampleRate (sampleRate)
+                       .withNumChannels ((size_t) buffer.getNumChannels())
+                       .withBitsPerSample ((size_t) bitDepth);
+
+    std::unique_ptr<juce::AudioFormatWriter> writer (wavFormat.createWriterFor (stream, options));
 
     if (writer == nullptr)
         return false;

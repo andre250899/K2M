@@ -73,12 +73,14 @@ MainComponent::MainComponent()
     auto audioErr = audioEngine.initAudio (0, 2);
     if (audioErr.isEmpty())
     {
+        auto* dev = audioEngine.getDeviceManager().getCurrentAudioDevice();
+        const juce::String devName = (dev != nullptr) ? dev->getName() : juce::String ("Dispositivo Padrão");
         statusLabel.setText (juce::String::formatted ("Áudio: %s | %.0f Hz | Bloco %d",
-                                                      audioEngine.getDeviceManager().getCurrentAudioDeviceName().toRawUTF8(),
+                                                      devName.toRawUTF8(),
                                                       audioEngine.getSampleRate(),
                                                       audioEngine.getBlockSize()),
                              juce::dontSendNotification);
-        appendLog ("[OK] Áudio WASAPI inicializado com sucesso.");
+        appendLog ("[OK] Áudio WASAPI inicializado com sucesso (" + devName + ").");
     }
     else
     {
@@ -168,7 +170,7 @@ void MainComponent::browseForPluginFile()
         "*.vst3"
     );
 
-    chooser->launchWithOptions (
+    chooser->launchAsync (
         juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
         [this, chooser] (const juce::FileChooser& fc)
         {

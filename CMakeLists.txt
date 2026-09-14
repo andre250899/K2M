@@ -13,6 +13,7 @@ juce_add_gui_app(K2M
     PRODUCT_NAME "K2M"
     VERSION 0.1.0
     COMPANY_NAME "K2M Project"
+    BUNDLE_ID "com.k2m.autosampler"
 )
 
 target_sources(K2M
