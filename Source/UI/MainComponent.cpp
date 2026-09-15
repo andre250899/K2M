@@ -1,10 +1,10 @@
 #include "MainComponent.h"
 
 MainComponent::MainComponent()
-    // false: scan de plugins em processo único. Ver comentário em PluginHost.h — o isolamento por
-    // processo filho crasha o K2M.exe pouco depois de escanear, mesmo sem nenhum plugin problemático;
-    // GateATest/GateBFixtureTest continuam usando o isolamento normalmente (ver PluginHost::PluginHost).
-    : pluginHost (false),
+    // true (default): scan de plugins isolado por processo filho descartável. O crash do K2M.exe
+    // logo após o scan tinha outra causa raiz (setSelectedId sem dontSendNotification disparando
+    // carregamento automático do Kontakt), já corrigida em applyScanResults() — ver PROGRESS.md.
+    : pluginHost (true),
       captureProgressBar (captureProgress)
 {
     // Cabeçalho

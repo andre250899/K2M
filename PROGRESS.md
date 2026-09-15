@@ -5,7 +5,7 @@
 > changelog completo — só o suficiente para retomar o trabalho sem
 > reconstruir contexto do zero. Consultar `git log` para histórico real.
 
-**Última atualização:** 2026-09-15, sessão no notebook pessoal (Kontakt 7/8 instalados, Visual Studio 2022 Community com CMake/Ninja embutidos — não havia CMake standalone nem Build Tools separados, usar o CMake de dentro de `Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin`).
+**Última atualização:** 2026-09-15, sessão na máquina da empresa (sem Kontakt/MODX M instalados) — só religou `useIsolatedScanning=true` no `K2M.exe` (item 3 dos próximos passos) e validou que compila; nenhuma mudança de comportamento testada ao vivo. Sessão anterior foi no notebook pessoal (Kontakt 7/8 instalados, Visual Studio 2022 Community com CMake/Ninja embutidos — não havia CMake standalone nem Build Tools separados, usar o CMake de dentro de `Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin`).
 
 ## Estado por fase (numeração da seção 20 do plano)
 
@@ -40,9 +40,9 @@
 
 ## Próximos passos sugeridos (em ordem)
 
-1. ~~Completar as 10 takes do `GateATest.exe` contra o Kontakt real~~ — **feito nesta sessão** (9/10 limpas, 1 interrompida manualmente, todas bit-a-bit idênticas). Falta só a parte de áudio audível: carregar um instrumento de verdade no Kontakt e rodar os 3 presets da seção 4.7 (percussivo, sustentado, release audível) para fechar a Fase 2 de vez.
-2. Investigar o crash remanescente do `K2M.exe` depois de alguns minutos aberto (mesma assinatura VCRUNTIME140.dll de antes do fix do auto-load — ver item 2 dos bugs desta sessão). Provavelmente ligado ao timer de 30Hz ou ao `AudioEngine`/WASAPI. Vale tentar configurar `HKLM\...\Windows Error Reporting\LocalDumps` (precisa de admin, não disponível nesta sessão) para conseguir um minidump completo e analisar com `cdb.exe`/WinDbg em vez de tentar capturar o `.mdmp` temporário na corrida contra o Windows.
-3. Reconsiderar religar `useIsolatedScanning=true` no `PluginHost` do `K2M.exe` (ver item 1 dos bugs desta sessão) agora que sabemos que o isolamento por processo não era a causa do crash do item 2 — traria de volta a proteção automática contra plugins de terceiros quebrados no app real, não só nos testes.
+1. ~~Completar as 10 takes do `GateATest.exe` contra o Kontakt real~~ — **feito** (9/10 limpas, 1 interrompida manualmente, todas bit-a-bit idênticas). Falta só a parte de áudio audível: carregar um instrumento de verdade no Kontakt e rodar os 3 presets da seção 4.7 (percussivo, sustentado, release audível) para fechar a Fase 2 de vez.
+2. Investigar o crash remanescente do `K2M.exe` depois de alguns minutos aberto (mesma assinatura VCRUNTIME140.dll de antes do fix do auto-load — ver item 2 dos bugs da sessão anterior). Provavelmente ligado ao timer de 30Hz ou ao `AudioEngine`/WASAPI. Vale tentar configurar `HKLM\...\Windows Error Reporting\LocalDumps` (precisa de admin) para conseguir um minidump completo e analisar com `cdb.exe`/WinDbg em vez de tentar capturar o `.mdmp` temporário na corrida contra o Windows.
+3. ~~Reconsiderar religar `useIsolatedScanning=true` no `PluginHost` do `K2M.exe`~~ — **feito nesta sessão** (máquina da empresa, sem Kontakt/MODX M): `MainComponent` voltou a instanciar `pluginHost (true)`; comentário desatualizado removido (a causa do crash antigo era o `setSelectedId` sem `dontSendNotification`, já corrigido, não o isolamento). Build (`cmake --build build --config Release --target K2M`) passou limpo. **Não testado ao vivo nesta máquina** por falta de Kontakt/pasta VST3 de terceiros — validar na próxima sessão com Kontakt disponível (scan real + abrir o app por alguns minutos para confirmar que o crash do item 2 não regrediu nem foi mascarado).
 4. Carregar um instrumento de verdade no Kontakt (manualmente, via `K2M.exe` → "Abrir Interface Kontakt") e então rodar os 3 presets da seção 4.7 (percussivo, sustentado, release audível) para fechar de vez a ressalva da Fase 2. Abrir os WAVs resultantes no Ableton (critério de aceite: "reaberto por leitor independente e ouvido no Ableton").
 5. Seguir com a opção 2 combinada anteriormente: baixar/testar ConvertWithMoss na rota SFZ → Yamaha legado.
 6. Gate B em si (import no MODX M) continua bloqueado até ter o teclado físico em mãos.
