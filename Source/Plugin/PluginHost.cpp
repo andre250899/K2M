@@ -1,7 +1,34 @@
 #include "PluginHost.h"
+#include "PluginScanWorker.h"
 
 namespace k2m
 {
+
+namespace
+{
+
+// Plugins conhecidos por crashar de forma reprodutível ao serem apenas consultados por descrição
+// (não ao serem carregados/tocados — trava na fábrica VST3, antes de qualquer uso real). O scan
+// isolado por processo já contém o dano a apenas o processo filho, mas o K2M ainda pagava um preço
+// (o processo pai (K2M.exe) morria pouco depois com uma violação de acesso em VCRUNTIME140.dll,
+// investigado em sessão de depuração mas sem causa raiz 100% confirmada por falta de dump capturado
+// a tempo). Excluir esses arquivos do scan de antemão evita acionar o problema.
+//   - "Addictive Keys.vst3" (XLN Audio, build 1.6.3/2021): a própria Cotton (framework interno do
+//     plugin) não encontra "luasystem,BaseSystem.lua" na instalação e desreferencia um ponteiro nulo
+//     em GetPluginFactory logo depois de logar o erro — instalação quebrada/desatualizada do plugin,
+//     não um problema do K2M.
+bool isKnownBadPluginFile (const juce::String& fileOrIdentifier)
+{
+    static const char* const knownBadSuffixes[] = { "Addictive Keys.vst3" };
+
+    for (auto* suffix : knownBadSuffixes)
+        if (fileOrIdentifier.endsWithIgnoreCase (suffix))
+            return true;
+
+    return false;
+}
+
+} // namespace
 
 PluginHost::PluginWindow::PluginWindow (juce::AudioPluginInstance& plugin, std::function<void()> onClose)
     : DocumentWindow (plugin.getName(),
@@ -37,9 +64,15 @@ void PluginHost::PluginWindow::closeButtonPressed()
 }
 
 //==============================================================================
-PluginHost::PluginHost()
+PluginHost::PluginHost (bool useIsolatedScanning)
 {
     juce::addDefaultFormatsToManager (formatManager);
+
+    // Cada arquivo é consultado num processo filho descartável: um plugin de terceiros mal-comportado
+    // (ex.: uma fábrica VST3 que lança exceção/crasha ao ser aberta) derruba só esse processo filho,
+    // não o host. Ver Source/Plugin/PluginHost.h para o porquê de K2M.exe passar false aqui.
+    if (useIsolatedScanning)
+        installOutOfProcessScanner (knownPluginList);
 }
 
 PluginHost::~PluginHost()
@@ -58,76 +91,59 @@ juce::Array<juce::PluginDescription> PluginHost::scanDefaultVst3Directory()
             searchPath.addPath (format->getDefaultLocationsToSearch());
     }
 
-    // 2. Diretório do executável K2M e subpastas (ex: VST3/)
+    // 2. Diretório do executável K2M e subpastas (ex: VST3/), útil para achar o K2M_TestSynth de build local
     const auto exeDir = juce::File::getSpecialLocation (juce::File::currentExecutableFile).getParentDirectory();
     searchPath.add (exeDir);
     searchPath.add (exeDir.getChildFile ("VST3"));
-
-    // 3. Pastas de build do projeto
     searchPath.add (exeDir.getParentDirectory());
-    searchPath.add (juce::File ("C:\\Users\\VOXX-PC\\Documents\\Projetos\\K2M\\build"));
-    searchPath.add (juce::File ("C:\\Program Files\\Common Files\\VST3"));
 
-    juce::Array<juce::PluginDescription> allResults;
-    juce::StringArray scannedIdentifiers;
-
-    for (int i = 0; i < formatManager.getNumFormats(); ++i)
-    {
-        if (auto* format = formatManager.getFormat (i))
-        {
-            auto files = format->searchPathsForPlugins (searchPath, true, false);
-            for (const auto& file : files)
-            {
-                juce::OwnedArray<juce::PluginDescription> descs;
-                format->findAllTypesForFile (descs, file);
-                for (auto* d : descs)
-                {
-                    if (d != nullptr && ! scannedIdentifiers.contains (d->fileOrIdentifier))
-                    {
-                        scannedIdentifiers.add (d->fileOrIdentifier);
-                        allResults.add (*d);
-                    }
-                }
-            }
-        }
-    }
-
-    return allResults;
+    return scanSearchPath (searchPath, true);
 }
 
 juce::Array<juce::PluginDescription> PluginHost::scanDirectory (const juce::File& dir, bool recursive)
 {
-    juce::Array<juce::PluginDescription> results;
-
     if (! dir.isDirectory())
-        return results;
+        return {};
 
-    auto files = dir.findChildFiles (juce::File::findFilesAndDirectories,
-                                     recursive,
-                                     "*.vst3");
+    juce::FileSearchPath searchPath;
+    searchPath.add (dir);
+    return scanSearchPath (searchPath, recursive);
+}
 
-    for (const auto& file : files)
+juce::Array<juce::PluginDescription> PluginHost::scanSearchPath (const juce::FileSearchPath& searchPath, bool recursive)
+{
+    // Cada arquivo encontrado é consultado num processo filho isolado (ver PluginScanWorker) através do
+    // CustomScanner instalado em knownPluginList — se um plugin de terceiros travar/crashar ao ser
+    // consultado, só aquele processo filho morre; o scan segue para o próximo arquivo normalmente.
+    for (int i = 0; i < formatManager.getNumFormats(); ++i)
     {
-        for (int i = 0; i < formatManager.getNumFormats(); ++i)
+        if (auto* format = formatManager.getFormat (i))
         {
-            if (auto* format = formatManager.getFormat (i))
-            {
-                if (format->fileMightContainThisPluginType (file.getFullPathName()))
-                {
-                    juce::OwnedArray<juce::PluginDescription> descriptions;
-                    format->findAllTypesForFile (descriptions, file.getFullPathName());
+            juce::PluginDirectoryScanner scanner (knownPluginList, *format, searchPath, recursive, juce::File());
 
-                    for (auto* desc : descriptions)
-                    {
-                        if (desc != nullptr)
-                            results.add (*desc);
-                    }
-                }
+            juce::StringArray filesToScan;
+            for (const auto& file : format->searchPathsForPlugins (searchPath, recursive, false))
+            {
+                if (isKnownBadPluginFile (file))
+                    juce::Logger::writeToLog ("[PluginHost] Pulando plugin conhecido por crashar na fábrica: " + file);
+                else
+                    filesToScan.add (file);
             }
+            scanner.setFilesOrIdentifiersToScan (filesToScan);
+
+            juce::String pluginBeingScanned;
+            while (scanner.scanNextFile (true, pluginBeingScanned)) { }
+
+            for (const auto& failed : scanner.getFailedFiles())
+                juce::Logger::writeToLog ("[PluginHost] Falha ao escanear (isolado): " + failed);
         }
     }
 
-    return results;
+    juce::Array<juce::PluginDescription> allResults;
+    for (const auto& desc : knownPluginList.getTypes())
+        allResults.add (desc);
+
+    return allResults;
 }
 
 void PluginHost::loadPluginAsync (const juce::PluginDescription& desc,

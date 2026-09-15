@@ -20,6 +20,7 @@ private:
     void timerCallback() override;
 
     void scanPlugins();
+    void applyScanResults (const juce::Array<juce::PluginDescription>& plugins);
     void loadSelectedPlugin (const juce::PluginDescription& desc);
     void browseForPluginFile();
     void openAudioSettings();
@@ -33,6 +34,7 @@ private:
     k2m::AudioEngine audioEngine;
 
     juce::Array<juce::PluginDescription> discoveredPlugins;
+    bool scanInProgress = false;
 
     // Elementos de UI
     juce::Label titleLabel;

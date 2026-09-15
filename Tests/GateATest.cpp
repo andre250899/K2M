@@ -2,6 +2,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "../Source/Plugin/PluginHost.h"
+#include "../Source/Plugin/PluginScanWorker.h"
 #include "../Source/Audio/CaptureSink.h"
 #include <iostream>
 #include <cmath>
@@ -9,6 +10,15 @@
 int main (int argc, char* argv[])
 {
     juce::ScopedJuceInitialiser_GUI guiInit;
+
+    // Este mesmo .exe é relançado como worker de scan isolado (ver PluginHost::scanSearchPath).
+    // Quando é o caso, só escaneia o plugin pedido e responde — não roda o teste do Gate A.
+    juce::String commandLine;
+    for (int i = 1; i < argc; ++i)
+        commandLine << argv[i] << " ";
+
+    if (k2m::runPluginScanWorkerIfRequested (commandLine))
+        return 0;
 
     std::cout << "=== K2M Gate A - Teste Automatizado de Captura ===" << std::endl;
 

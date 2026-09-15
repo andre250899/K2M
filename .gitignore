@@ -23,3 +23,6 @@
 
 # Ferramentas de terceiros baixadas para validação local (não redistribuir binários no repo)
 external/sfizz_render/
+
+# Saídas de takes manuais do GateATest.exe (não são fixture versionado, ver Tests/)
+/gate_a_takes/

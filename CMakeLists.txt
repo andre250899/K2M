@@ -21,6 +21,7 @@ target_sources(K2M
         Source/App/Main.cpp
         Source/UI/MainComponent.cpp
         Source/Plugin/PluginHost.cpp
+        Source/Plugin/PluginScanWorker.cpp
         Source/Audio/AudioEngine.cpp
         Source/Audio/CaptureSink.cpp
         Source/Mapping/Mapper.cpp
@@ -84,6 +85,54 @@ target_link_libraries(K2M
         juce::juce_recommended_warning_flags
 )
 
+# Worker dedicado do scan de plugins isolado por processo (ver Source/Plugin/ScanWorkerMain.cpp para
+# o porquê de não reaproveitar o próprio K2M.exe como worker de si mesmo). Console simples, sem
+# JUCEApplication, colocado ao lado do K2M.exe para PluginHost/PluginScanWorker encontrá-lo em runtime.
+add_executable(K2M_ScanWorker
+    Source/Plugin/ScanWorkerMain.cpp
+    Source/Plugin/PluginScanWorker.cpp
+)
+
+target_include_directories(K2M_ScanWorker
+    PRIVATE
+        Source
+        Source/Plugin
+)
+
+target_compile_features(K2M_ScanWorker PRIVATE cxx_std_20)
+
+target_compile_definitions(K2M_ScanWorker
+    PRIVATE
+        JUCE_PLUGINHOST_VST3=1
+        JUCE_PLUGINHOST_VST=0
+        JUCE_PLUGINHOST_AU=0
+        JUCE_PLUGINHOST_LADSPA=0
+        JUCE_PLUGINHOST_LV2=0
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+)
+
+target_link_libraries(K2M_ScanWorker
+    PRIVATE
+        juce::juce_audio_basics
+        juce::juce_audio_processors
+        juce::juce_core
+        juce::juce_data_structures
+        juce::juce_events
+        juce::juce_graphics
+        juce::juce_gui_basics
+        juce::juce_gui_extra
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
+
+set_target_properties(K2M_ScanWorker PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "$<TARGET_FILE_DIR:K2M>"
+)
+add_dependencies(K2M K2M_ScanWorker)
+
 # Optional helper: Also make AudioPluginHost available if building extras
 option(K2M_BUILD_AUDIO_PLUGIN_HOST "Build JUCE AudioPluginHost for diagnostic reference" OFF)
 if(K2M_BUILD_AUDIO_PLUGIN_HOST)
@@ -137,6 +186,7 @@ target_link_libraries(K2M_TestSynth
 add_executable(GateATest
     Tests/GateATest.cpp
     Source/Plugin/PluginHost.cpp
+    Source/Plugin/PluginScanWorker.cpp
     Source/Audio/CaptureSink.cpp
 )
 
@@ -182,6 +232,7 @@ target_link_libraries(GateATest
 add_executable(GateBFixtureTest
     Tests/GateBFixtureTest.cpp
     Source/Plugin/PluginHost.cpp
+    Source/Plugin/PluginScanWorker.cpp
     Source/Audio/CaptureSink.cpp
     Source/Mapping/Mapper.cpp
     Source/Export/SfzExporter.cpp

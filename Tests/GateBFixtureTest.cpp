@@ -8,6 +8,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "../Source/Plugin/PluginHost.h"
+#include "../Source/Plugin/PluginScanWorker.h"
 #include "../Source/Audio/CaptureSink.h"
 #include "../Source/Mapping/Mapper.h"
 #include "../Source/Export/SfzExporter.h"
@@ -128,9 +129,18 @@ bool captureOneJob (juce::AudioPluginInstance& plugin,
 
 } // namespace
 
-int main()
+int main (int argc, char* argv[])
 {
     juce::ScopedJuceInitialiser_GUI guiInit;
+
+    // Este mesmo .exe é relançado como worker de scan isolado (ver PluginHost::scanSearchPath).
+    // Quando é o caso, só escaneia o plugin pedido e responde — não roda o fixture do Gate B.
+    juce::String commandLine;
+    for (int i = 1; i < argc; ++i)
+        commandLine << argv[i] << " ";
+
+    if (k2m::runPluginScanWorkerIfRequested (commandLine))
+        return 0;
 
     std::cout << "=== K2M Fase 3 - Fixture do Gate B (2 notas x 2 velocities) ===" << std::endl;
 

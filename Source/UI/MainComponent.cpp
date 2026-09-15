@@ -1,7 +1,11 @@
 #include "MainComponent.h"
 
 MainComponent::MainComponent()
-    : captureProgressBar (captureProgress)
+    // false: scan de plugins em processo único. Ver comentário em PluginHost.h — o isolamento por
+    // processo filho crasha o K2M.exe pouco depois de escanear, mesmo sem nenhum plugin problemático;
+    // GateATest/GateBFixtureTest continuam usando o isolamento normalmente (ver PluginHost::PluginHost).
+    : pluginHost (false),
+      captureProgressBar (captureProgress)
 {
     // Cabeçalho
     titleLabel.setText ("K2M — Kontakt to MODX M Autosampler", juce::dontSendNotification);
@@ -89,7 +93,7 @@ MainComponent::MainComponent()
         appendLog ("[ERRO] Dispositivo de áudio: " + audioErr);
     }
 
-    // Escanear plugins na inicialização
+    // scanPlugins() dispara sua própria thread de background e retorna na hora (ver comentário lá).
     scanPlugins();
 
     startTimerHz (30);
@@ -133,8 +137,25 @@ void MainComponent::timerCallback()
 
 void MainComponent::scanPlugins()
 {
+    if (scanInProgress)
+        return;
+
+    scanInProgress = true;
+    scanButton.setEnabled (false);
     appendLog ("[INFO] Varrendo diretório padrão VST3 (C:\\Program Files\\Common Files\\VST3)...");
-    discoveredPlugins = pluginHost.scanDefaultVst3Directory();
+
+    // Síncrono, na thread de mensagens — de propósito. Rodar isso numa thread de background separada
+    // (tentado nesta sessão) derrubava o K2M.exe ~12-16s depois com uma violação de acesso em
+    // VCRUNTIME140.dll, mesmo com o scan em processo único (sem ChildProcessCoordinator envolvido).
+    // Suspeita: algum plugin da pasta (provavelmente Kontakt, que usa bastante COM/Windows APIs) não é
+    // seguro para consultar fora da thread que inicializou o app. GateATest/GateBFixtureTest, que
+    // escaneiam na própria thread principal deles, nunca reproduziram esse crash.
+    applyScanResults (pluginHost.scanDefaultVst3Directory());
+}
+
+void MainComponent::applyScanResults (const juce::Array<juce::PluginDescription>& plugins)
+{
+    discoveredPlugins = plugins;
 
     pluginSelector.clear();
     int kontaktIndex = -1;
@@ -151,15 +172,24 @@ void MainComponent::scanPlugins()
 
     appendLog (juce::String::formatted ("[INFO] %d plugins VST3 encontrados.", discoveredPlugins.size()));
 
+    // dontSendNotification: só marcar a seleção visualmente. setSelectedId() sem isso dispara
+    // pluginSelector.onChange (o notification type padrão é sendNotificationAsync) — que chama
+    // loadSelectedPlugin(), instanciando o plugin de verdade (não só consultando a descrição). Isso
+    // fazia o K2M tentar carregar o Kontakt sozinho, sem pedir, logo depois de todo scan concluído —
+    // e carregar o Kontakt de verdade crasha nesta máquina (investigar como item separado; não é causa
+    // do scan em si). Carregar continua um clique de distância, agora por escolha do usuário.
     if (kontaktIndex >= 0)
     {
         appendLog ("[OK] Kontakt VST3 identificado automaticamente.");
-        pluginSelector.setSelectedId (kontaktIndex + 1);
+        pluginSelector.setSelectedId (kontaktIndex + 1, juce::dontSendNotification);
     }
     else if (discoveredPlugins.size() > 0)
     {
-        pluginSelector.setSelectedId (1);
+        pluginSelector.setSelectedId (1, juce::dontSendNotification);
     }
+
+    scanButton.setEnabled (true);
+    scanInProgress = false;
 }
 
 void MainComponent::browseForPluginFile()
